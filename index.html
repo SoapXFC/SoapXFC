@@ -1,1 +1,169 @@
-<h2>This site is under construction 🚧 </h2>
+<!DOCTYPE html>
+<html>
+<head>
+<title>Cryonix City</title>
+<style>
+body { margin:0; overflow:hidden; background:#111; }
+canvas { display:block; }
+#ui {
+  position:absolute;
+  top:10px;
+  left:10px;
+  color:white;
+  font-family:monospace;
+  font-size:18px;
+}
+</style>
+</head>
+<body>
+
+<div id="ui">
+Health: <span id="health">100</span> |
+Score: <span id="score">0</span> |
+Wanted: <span id="wanted">★</span>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let keys = {};
+document.addEventListener("keydown", e => keys[e.key] = true);
+document.addEventListener("keyup", e => keys[e.key] = false);
+
+let player = {
+  x: canvas.width/2,
+  y: canvas.height/2,
+  width: 40,
+  height: 20,
+  angle: 0,
+  speed: 0,
+  maxSpeed: 5,
+  health: 100
+};
+
+let bullets = [];
+let enemies = [];
+let score = 0;
+let wantedLevel = 1;
+
+function spawnEnemy() {
+  enemies.push({
+    x: Math.random()*canvas.width,
+    y: Math.random()*canvas.height,
+    size: 30,
+    speed: 1 + wantedLevel*0.5
+  });
+}
+
+setInterval(spawnEnemy, 2000);
+
+setInterval(() => {
+  wantedLevel++;
+  document.getElementById("wanted").innerText = "★".repeat(wantedLevel);
+}, 15000);
+
+document.addEventListener("click", e => {
+  bullets.push({
+    x: player.x,
+    y: player.y,
+    dx: Math.cos(player.angle)*8,
+    dy: Math.sin(player.angle)*8
+  });
+});
+
+function update() {
+
+  if (keys["w"]) player.speed = Math.min(player.speed+0.2, player.maxSpeed);
+  if (keys["s"]) player.speed = Math.max(player.speed-0.2, -2);
+  if (keys["a"]) player.angle -= 0.05;
+  if (keys["d"]) player.angle += 0.05;
+
+  player.x += Math.cos(player.angle)*player.speed;
+  player.y += Math.sin(player.angle)*player.speed;
+  player.speed *= 0.98;
+
+  bullets.forEach((b, bi) => {
+    b.x += b.dx;
+    b.y += b.dy;
+    if (b.x<0 || b.x>canvas.width || b.y<0 || b.y>canvas.height)
+      bullets.splice(bi,1);
+  });
+
+  enemies.forEach((enemy, ei) => {
+    let dx = player.x - enemy.x;
+    let dy = player.y - enemy.y;
+    let dist = Math.sqrt(dx*dx + dy*dy);
+    enemy.x += dx/dist * enemy.speed;
+    enemy.y += dy/dist * enemy.speed;
+
+    if (dist < 30) {
+      player.health -= 0.5;
+      document.getElementById("health").innerText = Math.floor(player.health);
+      if (player.health <= 0) gameOver();
+    }
+  });
+
+  bullets.forEach((b, bi) => {
+    enemies.forEach((e, ei) => {
+      if (Math.abs(b.x - e.x) < 20 && Math.abs(b.y - e.y) < 20) {
+        enemies.splice(ei,1);
+        bullets.splice(bi,1);
+        score++;
+        document.getElementById("score").innerText = score;
+      }
+    });
+  });
+}
+
+function drawCity() {
+  ctx.fillStyle = "#333";
+  for (let i=0; i<10; i++) {
+    ctx.fillRect(i*200, 100, 150, 100);
+    ctx.fillRect(i*200, 400, 150, 100);
+  }
+}
+
+function drawPlayer() {
+  ctx.save();
+  ctx.translate(player.x, player.y);
+  ctx.rotate(player.angle);
+  ctx.fillStyle = "lime";
+  ctx.fillRect(-player.width/2, -player.height/2, player.width, player.height);
+  ctx.restore();
+}
+
+function draw() {
+  ctx.fillStyle="#222";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  drawCity();
+  drawPlayer();
+
+  ctx.fillStyle="yellow";
+  bullets.forEach(b => ctx.fillRect(b.x,b.y,5,5));
+
+  ctx.fillStyle="red";
+  enemies.forEach(e => ctx.fillRect(e.x,e.y,e.size,e.size));
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+function gameOver() {
+  alert("GAME OVER | Final Score: "+score);
+  location.reload();
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>
